@@ -308,12 +308,9 @@ You will be automatically redirected to the login page.
 
 ## 📄 License
 
-This project was created for academic purposes (university database course — Section BAI-4A). Free to use and modify for educational use.
+This project was created for academic purposes. Free to use and modify for educational use.
 
 ---
 
 ## 👤 Author
 
-**Zafar Ullah Khan** — Reg# 24P-0021  
-University Database Project — Employee Management System  
-Section BAI-4A
