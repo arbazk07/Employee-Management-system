@@ -1,15 +1,20 @@
 <?php
 // includes/topbar.php
-// Usage: include with $page_title set
+// Usage: include with $page_title and $page_sub set in the calling page
 $page_title = $page_title ?? 'Dashboard';
-$page_sub   = $page_sub   ?? 'High-level metrics and current operations.';
+$page_sub   = $page_sub   ?? '';
 $user_name  = $_SESSION['user_name'] ?? 'Admin';
 $user_initials = strtoupper(implode('', array_map(fn($w)=>$w[0], explode(' ', $user_name))));
 ?>
 <header class="topbar fade-up">
   <div>
     <div class="topbar-title"><?= htmlspecialchars($page_title) ?></div>
-    <div class="topbar-sub" id="date-display">Loading…</div>
+    <div class="topbar-sub">
+      <?php if ($page_sub): ?>
+      <span><?= htmlspecialchars($page_sub) ?></span> &nbsp;·&nbsp;
+      <?php endif; ?>
+      <span id="date-display"></span>
+    </div>
   </div>
   <div class="topbar-actions">
     <button class="icon-btn" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Notifications">

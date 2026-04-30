@@ -1,6 +1,5 @@
 <?php
 // reports.php — Analytics, aggregates, joins, subqueries
-session_start();
 require_once 'config.php';
 requireLogin();
 
@@ -11,19 +10,24 @@ $min_hours = max(0, (float)($_GET['min_hours'] ?? 0));
 $dept_filter = (int)($_GET['dept_id'] ?? 0);
 
 // ── 1. Employees working MORE than X hours (subquery) ────
-$heavy_workers = $pdo->prepare("
+$sql_heavy = "
     SELECT e.Emp_ID, e.Name, e.Email, d.Name AS DeptName,
            SUM(w.Hours) AS TotalHours,
            COUNT(w.Proj_ID) AS ProjectCount
     FROM employee e
     JOIN works_on w    ON e.Emp_ID  = w.Emp_ID
     LEFT JOIN department d ON e.Dept_ID = d.Dept_ID
-    " . ($dept_filter ? "WHERE e.Dept_ID = $dept_filter" : "") . "
+    " . ($dept_filter ? "WHERE e.Dept_ID = ?" : "") . "
     GROUP BY e.Emp_ID
     HAVING SUM(w.Hours) > ?
     ORDER BY TotalHours DESC
-");
-$heavy_workers->execute([$min_hours]);
+";
+$heavy_workers = $pdo->prepare($sql_heavy);
+if ($dept_filter) {
+    $heavy_workers->execute([$dept_filter, $min_hours]);
+} else {
+    $heavy_workers->execute([$min_hours]);
+}
 $heavy_workers = $heavy_workers->fetchAll();
 
 // ── 2. Project summary (join + aggregate) ─────────────────
@@ -87,6 +91,7 @@ $depts = $pdo->query("SELECT Dept_ID, Name FROM department ORDER BY Name")->fetc
 
 $active_page = 'reports';
 $page_title  = 'Reports';
+$page_sub    = 'Aggregated insights — joins, subqueries, aggregates.';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -458,20 +463,28 @@ new Chart(document.getElementById('hoursDistChart'), {
 
 /* DataTables */
 $(function(){
+  // Guard against re-init on filter resubmit
+  if ($.fn.DataTable.isDataTable('#heavyTable')) {
+    $('#heavyTable').DataTable().destroy();
+  }
   $('#heavyTable').DataTable({
-    paging:false, searching:false, info:false,
-    order:[[3,'desc']],
-    columnDefs:[{type:'num',targets:3}]
+    dom: 't',          // table only — no wrapper controls that clash with projSummaryTable
+    paging: false, searching: false, info: false,
+    order: [[3,'desc']],
+    columnDefs: [{type:'num', targets:3}]
   });
+
   $('#projSummaryTable').DataTable({
     dom:'<"dt-top-inner"lf>rt<"dt-bottom-inner"ip>',
     pageLength:10,
     order:[[3,'desc']],
     language:{search:'',searchPlaceholder:'Filter projects...',lengthMenu:'Show _MENU_',paginate:{previous:'Prev',next:'Next'}},
-    initComplete:function(){
-      $('.dt-top-inner').appendTo('#dt-controls3').css({display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'});
-      $('.dataTables_filter input').css({width:'200px'});
-      $('.dt-bottom-inner').appendTo('#dt-bottom3').css({display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'});
+    initComplete: function(){
+      // Scope to THIS table's wrapper to avoid grabbing heavyTable's elements
+      var container = $(this.api().table().container());
+      container.find('.dt-top-inner').appendTo('#dt-controls3').css({display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'});
+      container.find('.dataTables_filter input').css({width:'200px'});
+      container.find('.dt-bottom-inner').appendTo('#dt-bottom3').css({display:'flex',alignItems:'center',justifyContent:'space-between',width:'100%'});
     }
   });
 });

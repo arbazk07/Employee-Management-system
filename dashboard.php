@@ -1,6 +1,5 @@
 <?php
 // dashboard.php
-session_start();
 require_once 'config.php';
 requireLogin();
 
@@ -61,6 +60,7 @@ $chart_proj_data   = json_encode(array_column($proj_hours, 'hrs'));
 
 $active_page = 'dashboard';
 $page_title  = 'Dashboard';
+$page_sub    = 'High-level metrics and current operations.';
 ?>
 <!DOCTYPE html>
 <html lang="en">

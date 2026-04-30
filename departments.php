@@ -1,6 +1,5 @@
 <?php
 // departments.php
-session_start();
 require_once 'config.php';
 requireLogin();
 
@@ -15,34 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['role']==='admin') {
     if ($name) {
         if ($action === 'add') {
             $pdo->prepare("INSERT INTO department (Name,Manager_ID,Employee_Number) VALUES (?,?,0)")->execute([$name,$mgr_id]);
-            // Update Employee_Number
-            if ($mgr_id) {
-                $pdo->prepare("UPDATE department SET Manager_ID=? WHERE Name=? ORDER BY Dept_ID DESC LIMIT 1")->execute([$mgr_id,$name]);
-            }
-            setFlash('success', "Department <strong>$name</strong> created.");
+            setFlash('success', "Department <strong>" . htmlspecialchars($name) . "</strong> created.");
         } elseif ($action === 'edit') {
             $dept_id = (int)($_POST['dept_id'] ?? 0);
             $pdo->prepare("UPDATE department SET Name=?,Manager_ID=? WHERE Dept_ID=?")->execute([$name,$mgr_id,$dept_id]);
-            setFlash('success', "Department <strong>$name</strong> updated.");
+            setFlash('success', "Department <strong>" . htmlspecialchars($name) . "</strong> updated.");
         }
     }
     redirect('departments.php');
-}
-
-// ── Handle delete GET ────────────────────────────────────
-if (isset($_GET['delete']) && $_SESSION['role']==='admin') {
-    header('Content-Type: application/json');
-    $id = (int)$_GET['delete'];
-    if (isset($_POST['confirm'])) {
-        try {
-            $pdo->prepare("DELETE FROM department WHERE Dept_ID=?")->execute([$id]);
-            echo json_encode(['success'=>true]);
-        } catch (PDOException $e) {
-            echo json_encode(['success'=>false,'message'=>'Cannot delete: employees assigned to this department.']);
-        }
-        exit;
-    }
-    echo json_encode(['success'=>false,'message'=>'No confirmation.']); exit;
 }
 
 // ── Fetch departments with stats ────────────────────────
@@ -62,6 +41,7 @@ $all_emps = $pdo->query("SELECT Emp_ID,Name FROM employee ORDER BY Name")->fetch
 $flash = getFlash();
 $active_page = 'departments';
 $page_title  = 'Departments';
+$page_sub    = 'Manage divisions and their managers.';
 ?>
 <!DOCTYPE html>
 <html lang="en">

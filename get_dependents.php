@@ -1,6 +1,5 @@
 <?php
 // get_dependents.php — AJAX JSON endpoint
-session_start();
 require_once 'config.php';
 requireLogin();
 

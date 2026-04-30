@@ -1,6 +1,5 @@
 <?php
 // delete_employee.php — AJAX DELETE endpoint
-session_start();
 require_once 'config.php';
 requireAdmin();
 

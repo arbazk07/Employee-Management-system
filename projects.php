@@ -1,6 +1,5 @@
 <?php
 // projects.php
-session_start();
 require_once 'config.php';
 requireLogin();
 
@@ -17,32 +16,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $_SESSION['role'] === 'admin') {
         if ($action === 'add') {
             $pdo->prepare("INSERT INTO project (Name, Number, Dept_ID) VALUES (?,?,?)")
                 ->execute([$name, $number ?: null, $dept_id]);
-            setFlash('success', "Project <strong>$name</strong> created.");
+            setFlash('success', "Project <strong>" . htmlspecialchars($name) . "</strong> created.");
         } elseif ($action === 'edit') {
             $proj_id = (int)($_POST['proj_id'] ?? 0);
             $pdo->prepare("UPDATE project SET Name=?, Number=?, Dept_ID=? WHERE Proj_ID=?")
                 ->execute([$name, $number ?: null, $dept_id, $proj_id]);
-            setFlash('success', "Project <strong>$name</strong> updated.");
+            setFlash('success', "Project <strong>" . htmlspecialchars($name) . "</strong> updated.");
         }
     }
     redirect('projects.php');
-}
-
-// ── AJAX delete ─────────────────────────────────────────
-if (isset($_GET['delete']) && $_SESSION['role'] === 'admin') {
-    header('Content-Type: application/json');
-    $id = (int)$_GET['delete'];
-    if (isset($_POST['confirm'])) {
-        try {
-            $pdo->prepare("DELETE FROM project WHERE Proj_ID=?")->execute([$id]);
-            echo json_encode(['success' => true]);
-        } catch (PDOException $e) {
-            echo json_encode(['success' => false, 'message' => 'Delete failed.']);
-        }
-        exit;
-    }
-    echo json_encode(['success' => false, 'message' => 'No confirmation.']);
-    exit;
 }
 
 // ── Fetch projects with totals ───────────────────────────
@@ -63,6 +45,7 @@ $max_hrs  = max(array_column($projects, 'TotalHours') ?: [1]);
 $flash       = getFlash();
 $active_page = 'projects';
 $page_title  = 'Projects';
+$page_sub    = 'Track active projects, hours, and assigned staff.';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -140,7 +123,7 @@ $page_title  = 'Projects';
       <?php if ($_SESSION['role'] === 'admin'): ?>
       <div class="proj-card-actions">
         <button class="action-btn btn-primary-action" onclick="openProjModal('edit', <?= htmlspecialchars(json_encode($p)) ?>)">Edit</button>
-        <button class="action-btn btn-danger-action" onclick="deleteProject(<?= $p['Proj_ID'] ?>, '<?= addslashes($p['Name']) ?>')">Del</button>
+        <button class="action-btn btn-danger-action" onclick="deleteProject(<?= $p['Proj_ID'] ?>, '<?= addslashes($p['Name']) ?>')">Delete</button>
       </div>
       <?php endif; ?>
       <div class="proj-num">PRJ-<?= str_pad($p['Number'] ?? $p['Proj_ID'], 3, '0', STR_PAD_LEFT) ?></div>
@@ -290,7 +273,7 @@ function openProjModal(mode, data) {
 }
 
 function deleteProject(id, name) {
-  confirmDelete(`projects.php?delete=${id}`, name, 'Project');
+  confirmDelete(`delete_project.php?id=${id}`, name, 'Project');
 }
 
 function showTeam(projId, projName) {

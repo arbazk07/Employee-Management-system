@@ -1,6 +1,5 @@
 <?php
 // employees.php — Full CRUD with inline modal editing
-session_start();
 require_once 'config.php';
 requireLogin();
 
@@ -29,12 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if ($action === 'add') {
                     $stmt = $pdo->prepare("INSERT INTO employee (Name,Email,Address,Dept_ID,Supervisor_ID) VALUES (?,?,?,?,?)");
                     $stmt->execute([$name,$email,$address,$dept_id,$sup_id]);
-                    setFlash('success', "Employee <strong>$name</strong> added successfully.");
+                    setFlash('success', "Employee <strong>" . htmlspecialchars($name) . "</strong> added successfully.");
                 } else {
                     $emp_id = (int)($_POST['emp_id'] ?? 0);
                     $stmt = $pdo->prepare("UPDATE employee SET Name=?,Email=?,Address=?,Dept_ID=?,Supervisor_ID=? WHERE Emp_ID=?");
                     $stmt->execute([$name,$email,$address,$dept_id,$sup_id,$emp_id]);
-                    setFlash('success', "Employee <strong>$name</strong> updated successfully.");
+                    setFlash('success', "Employee <strong>" . htmlspecialchars($name) . "</strong> updated successfully.");
                 }
             } catch (PDOException $e) {
                 setFlash('error', 'Error: Email may already be in use.');
@@ -66,6 +65,7 @@ $employees = $pdo->query("
 $flash   = getFlash();
 $active_page = 'employees';
 $page_title  = 'Employees';
+$page_sub    = 'Manage staff records, roles, and assignments.';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -179,18 +179,19 @@ $page_title  = 'Employees';
       <h5 id="modal-title">Add Employee</h5>
       <button class="modal-close" onclick="closeModal()">×</button>
     </div>
-    <form method="POST" action="employees.php" id="empForm">
+    <form method="POST" action="employees.php" id="empForm" novalidate>
       <div class="modal-body">
         <input type="hidden" name="action" id="form-action" value="add">
         <input type="hidden" name="emp_id" id="form-emp-id">
+        <div id="form-validation-msg" style="display:none;margin-bottom:.75rem;padding:8px 12px;border-radius:6px;font-size:13px;background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.25);color:#EF4444;"></div>
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Full Name *</label>
-            <input type="text" name="name" id="f-name" class="form-control" placeholder="Ali Khan" required>
+            <input type="text" name="name" id="f-name" class="form-control" placeholder="Ali Khan">
           </div>
           <div class="form-group">
             <label class="form-label">Email Address *</label>
-            <input type="email" name="email" id="f-email" class="form-control" placeholder="ali@company.com" required>
+            <input type="email" name="email" id="f-email" class="form-control" placeholder="ali@company.com">
           </div>
         </div>
         <div class="form-group">
@@ -260,6 +261,11 @@ $(function(){
 /* ── Modal open/close ── */
 function openModal(mode, empData) {
   const modal = document.getElementById('empModal');
+  const supSel = document.getElementById('f-sup');
+
+  // Reset all supervisor options visibility first
+  [...supSel.options].forEach(o => o.hidden = false);
+
   if (mode === 'add') {
     document.getElementById('modal-title').textContent = 'Add Employee';
     document.getElementById('form-action').value = 'add';
@@ -274,12 +280,51 @@ function openModal(mode, empData) {
     document.getElementById('f-email').value   = empData.Email;
     document.getElementById('f-address').value = empData.Address || '';
     document.getElementById('f-dept').value    = empData.Dept_ID || '';
-    document.getElementById('f-sup').value     = empData.Supervisor_ID || '';
+
+    // Hide this employee from their own supervisor list (prevent self-reference)
+    [...supSel.options].forEach(o => {
+      if (o.value == empData.Emp_ID) o.hidden = true;
+    });
+    // Only set supervisor value if it's not themselves (safety)
+    supSel.value = (empData.Supervisor_ID && empData.Supervisor_ID != empData.Emp_ID)
+                   ? empData.Supervisor_ID : '';
   }
   modal.classList.add('open');
 }
 function closeModal() { document.getElementById('empModal').classList.remove('open'); }
 function closeOnOverlay(e) { if(e.target===e.currentTarget) e.currentTarget.classList.remove('open'); }
+
+/* ── Client-side validation ── */
+document.getElementById('empForm').addEventListener('submit', function(e) {
+  const name  = document.getElementById('f-name').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const msg   = document.getElementById('form-validation-msg');
+  const errors = [];
+  if (!name)  errors.push('Full name is required.');
+  if (!email) errors.push('Email address is required.');
+  else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.push('Please enter a valid email address.');
+  if (errors.length) {
+    e.preventDefault();
+    msg.style.display = 'block';
+    msg.textContent = errors.join(' ');
+    document.getElementById('f-name').style.borderColor  = !name  ? '#EF4444' : '';
+    document.getElementById('f-email').style.borderColor = !email ? '#EF4444' : '';
+  } else {
+    msg.style.display = 'none';
+    document.getElementById('f-name').style.borderColor  = '';
+    document.getElementById('f-email').style.borderColor = '';
+  }
+});
+/* Clear error highlight on input */
+['f-name','f-email'].forEach(id => {
+  document.getElementById(id).addEventListener('input', function() {
+    this.style.borderColor = '';
+    const msg = document.getElementById('form-validation-msg');
+    if (document.getElementById('f-name').value.trim() && document.getElementById('f-email').value.trim()) {
+      msg.style.display = 'none';
+    }
+  });
+});
 
 /* Auto-open edit modal if URL has ?edit= */
 <?php if ($edit_emp): ?>

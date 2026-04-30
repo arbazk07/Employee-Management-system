@@ -7,6 +7,14 @@ define('DB_NAME', 'employee_management_system');
 define('DB_USER', 'root');
 define('DB_PASS', '');          // Leave empty for default XAMPP
 
+// Safe session start — prevents "session already started" warning
+function session_start_safe(): void {
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+}
+session_start_safe();
+
 // PDO connection with error handling
 function getDB(): PDO {
     static $pdo = null;
